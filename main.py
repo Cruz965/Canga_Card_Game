@@ -79,52 +79,60 @@ while(rodando is True):
             # para False, o que fará com que o 'while' termine na próxima verificação.
 
 
-    # --- Bloco 3.2: Lógica de Desenho ---
-    # 1. Limpe a tela com a cor de fundo (você já tem essa linha).
-
-
-    # --- Lógica para Desenhar a Mão do jogador1 ---
+    # --- Bloco 3.2: Lógica de Desenho e Interação (VERSÃO CORRIGIDA) ---
     tela.fill(COR_MESA)
     
-
-
-    # b. Para facilitar, pegue a lista de cartas da mão do jogador1 e guarde em uma variável local.
+    # a. Pegamos a posição do mouse.
+    pos_mouse = pygame.mouse.get_pos()
+    
+    # b. INICIALIZAMOS a variável de hover com um valor padrão.
+    indice_carta_hover = -1
+    
+    # c. Pegamos a mão do jogador.
     cartas_jogador_1 = jogador1.mao
-
-    # c. Calcule a largura total que a mão vai ocupar na tela.
-    #    Primeiro, verifique se a lista da mão não está vazia.
+    
     if cartas_jogador_1:
-
-        # A lógica é: (número de espaços entre as cartas) * (tamanho do espaço) + (largura da última carta).
+        # Cálculos de layout (seu código aqui estava perfeito).
         largura_mao_jogador_1 = ((len(cartas_jogador_1)-1)*ESPACAMENTO_ENTRE_CARTAS+(LARGURA_CARTA))
-        # O número de espaços é sempre o número de cartas menos 1.
-        # Calcule isso e guarde em uma variável 'largura_total_mao'.
-
-
-        # d. Calcule a posição X da primeira carta para que a mão inteira fique centralizada.
-        #    O raciocínio é: o centro da tela (LARGURA_TELA / 2) menos a metade da largura da mão.
-        #    Isso nos dá o ponto exato onde a primeira carta deve começar. Guarde em 'posicao_x_inicial'.
         posicao_X_mao_incial = (LARGURA_TELA/2 - largura_mao_jogador_1/2)
 
-        # e. Agora, o laço para desenhar cada carta.
-        #    Use 'for i, carta in enumerate(sua_variavel_da_mao):' para ter acesso
-        #    ao índice 'i' e ao objeto 'carta' em cada volta.
-        # e. O laço para desenhar cada carta.
+        # d. Criamos uma lista para guardar os rects calculados.
+        lista_de_rects_da_mao = []
         for i, carta in enumerate(jogador1.mao):
-            
-            # f. Calcula a posição X específica para ESTA carta. (Sua linha estava perfeita)
             posicao_x_carta = posicao_X_mao_incial + i * ESPACAMENTO_ENTRE_CARTAS
-            
-            # g. Pega a imagem e o rect da carta ATUAL do loop
-            imagem_da_carta = carta.imagem
-            rect_da_carta = imagem_da_carta.get_rect()
-            
-            # h. Posiciona o rect nas coordenadas corretas
+            rect_da_carta = carta.imagem.get_rect()
             rect_da_carta.topleft = (posicao_x_carta, POSICAO_Y_MAO)
+            lista_de_rects_da_mao.append(rect_da_carta)
             
-            # i. Finalmente, desenha a imagem da carta na posição do rect
-            tela.blit(imagem_da_carta, rect_da_carta)
-    pygame.display.flip()        
+        # e. Descobrimos qual carta está sob o mouse (de trás para frente).
+        for i in range(len(lista_de_rects_da_mao) - 1, -1, -1): 
+            rect_atual = lista_de_rects_da_mao[i]
+            # Verificamos se o 'pos_mouse' colide com este rect.
+            if rect_atual.collidepoint(pos_mouse):
+                # Se colidir, guardamos o índice e paramos de procurar.
+                indice_carta_hover = i
+                break
+        
+        # f. Finalmente, o laço de DESENHO.
+        for i, carta in enumerate(jogador1.mao):
+            # Pegamos o rect correspondente da lista.
+            rect_original = lista_de_rects_da_mao[i]
+            
+            # Verificamos se esta é a carta que deve levitar.
+            if i == indice_carta_hover:
+                # Se for, criamos uma CÓPIA do rect e a movemos para cima.
+                rect_para_desenhar = rect_original.copy()
+                rect_para_desenhar.y = POSICAO_Y_MAO - 30
+            else:
+                # Se não for, usamos o rect original.
+                rect_para_desenhar = rect_original
+            
+            # Desenhamos a imagem da carta usando o rect final.
+            tela.blit(carta.imagem, rect_para_desenhar)
+
+    # --- Bloco 3.3: Atualização da Tela ---
+    # O flip() deve estar fora do 'if', para a tela sempre atualizar.
+    pygame.display.flip()
 # --- Bloco 4: Finalização ---
 
 # O loop 'while' terminou, o que significa que o jogo acabou.
