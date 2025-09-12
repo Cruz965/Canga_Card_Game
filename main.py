@@ -21,7 +21,9 @@ ESPACAMENTO_ENTRE_CARTAS = LARGURA_CARTA / 3
 # Vamos definir uma cor para o fundo da nossa mesa. Um verde escuro é clássico.
 # Valores vão de 0 a 255. Tente algo como (7, 99, 36).
 COR_MESA = (7, 99, 36)
-
+CENTRO_DA_TELA = (LARGURA_TELA/2,ALTURA_TELA/2)
+COR_MESA_ESCURA = (80, 42, 25)
+COR_MESA_CLARA = (160,69,19)
 # Agora, criamos a janela principal do jogo usando as constantes de largura e altura.
 
 # A função para isso fica dentro do módulo 'display' do pygame.
@@ -65,6 +67,11 @@ ultimo_movimento_mouse = pygame.time.get_ticks()
 # Começamos com 0 para que a primeira carta da mão já comece selecionada.
 # Crie a variável 'indice_selecionado_teclado' e inicialize com 0.
 indice_selecionado_teclado = 0
+
+# --- NOVA LÓGICA: Lista para guardar as cartas jogadas na vaza atual ---
+# Crie uma lista vazia chamada 'vaza_atual'.
+vaza_atual = []
+
 # --- Bloco 3: O Loop Principal do Jogo ---
 # O coração de todo jogo é um "game loop", um laço de repetição que continua
 # rodando enquanto o jogo estiver ativo. Usaremos um 'while' para isso.
@@ -99,8 +106,33 @@ while(rodando is True):
             # Alterna a visibilidade da mão com a Barra de Espaço.
             elif event.key == pygame.K_SPACE:
                 mao_visivel = not mao_visivel
+            # --- NOVA LÓGICA: Checa se a tecla Enter (ou Return) foi pressionada ---
+        # A constante para a tecla Enter é pygame.K_RETURN.
+            elif event.key == pygame.K_RETURN:
 
-            # Garante que o índice da seleção do teclado não saia dos limites da mão.
+            # Dentro deste 'elif', vamos executar a lógica de jogar a carta.
+            # Primeiro, como uma segurança, verifique se o jogador AINDA TEM cartas na mão.
+                if jogador1.mao:
+                # Agora, decida qual carta foi jogada. A prioridade é do mouse.
+                # Se 'indice_carta_hover' for um índice válido (ou seja, diferente de -1)...
+                    if indice_carta_hover != -1:
+                        indice = indice_carta_hover
+                    # ...então o índice da carta a ser jogada é o 'indice_carta_hover'.
+                    
+                # Senão...
+                    else:
+                        indice = indice_selecionado_teclado
+                    # ...o índice a ser jogado é o que está guardado em 'indice_selecionado_teclado'.
+                    
+                # Com o índice decidido, remova a carta da mão do jogador.
+                # O método .pop(indice) remove um item de uma lista e o retorna.
+                
+                # Guarde a carta que foi removida em uma variável 'carta_jogada'.
+                carta_jogada = jogador1.pop(indice)
+                # Finalmente, adicione a 'carta_jogada' à nossa lista 'vaza_atual'.
+                vaza_atual.append(carta_jogada)
+            #Tratamentos de eventos
+            #  Garante que o índice da seleção do teclado não saia dos limites da mão.
             if indice_selecionado_teclado > len(jogador1.mao) - 1:
                 indice_selecionado_teclado = len(jogador1.mao) - 1
             if indice_selecionado_teclado < 0:
@@ -111,7 +143,7 @@ while(rodando is True):
             # Alterna a visibilidade da mão com o botão direito.
             if event.button == 3: # 3 = Botão direito
                 mao_visivel = not mao_visivel
-            
+         
         
     if pygame.time.get_ticks() - ultimo_movimento_mouse > 4000:
         # Se for, mandamos o Pygame esconder o cursor.
@@ -125,7 +157,27 @@ while(rodando is True):
     # Prepara as variáveis necessárias para a interação a cada frame.
     pos_mouse = pygame.mouse.get_pos()
     indice_carta_hover = -1 # -1 significa que nenhuma carta está sob o mouse.
+    # --- NOVA LÓGICA: Desenha a Mesa ---
     
+    # a. Defina as cores para a mesa.
+    #    Vamos usar dois tons de marrom: um escuro para a borda e um mais claro para o centro.
+    #    Crie as variáveis COR_MESA_ESCURA e COR_MESA_CLARA.
+    #    Bons valores: Escuro -> (139, 69, 19), Claro -> (160, 82, 45)
+   
+    
+    # b. Defina o centro da tela.
+    #    Podemos calcular isso a partir das nossas constantes LARGURA_TELA e ALTURA_TELA.
+    #    Crie uma variável 'centro_da_tela'.
+ 
+
+    # c. Desenhe o círculo externo (maior e mais escuro).
+    #    Use a função pygame.draw.circle().
+    #    Passe a tela, a cor escura, o centro da tela e um raio (ex: 300 pixels).
+    pygame.draw.circle(tela,COR_MESA_CLARA, CENTRO_DA_TELA, 260)
+    
+    # d. Desenhe o círculo interno (menor e mais claro) por cima.
+    #    Use a mesma função, mas com a cor mais clara e um raio um pouco menor (ex: 280 pixels).
+    pygame.draw.circle(tela,COR_MESA_ESCURA, CENTRO_DA_TELA, 180)    
     # Pega a mão do jogador atual para desenhar.
     cartas_da_mao = jogador1.mao
     
