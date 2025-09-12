@@ -54,6 +54,15 @@ baralho.distribuir(jogador1, 5)
 
 # 5. Faça o mesmo para o jogador2, dando 5 cartas para ele também.
 baralho.distribuir(jogador2, 5)
+# --- NOVA LÓGICA: Variável para o timer de inatividade do mouse ---
+# A função pygame.time.get_ticks() nos dá o número de milissegundos desde o início do jogo.
+# Vamos guardar o tempo do último movimento aqui.
+ultimo_movimento_mouse = pygame.time.get_ticks()
+# --- NOVA LÓGICA: Variável para a seleção via teclado ---
+# Guarda o índice da carta que está selecionada pelo teclado.
+# Começamos com 0 para que a primeira carta da mão já comece selecionada.
+# Crie a variável 'indice_selecionado_teclado' e inicialize com 0.
+indice_selecionado_teclado = 0
 # --- Bloco 3: O Loop Principal do Jogo ---
 
 # O coração de todo jogo é um "game loop", um laço de repetição que continua
@@ -77,8 +86,39 @@ while(rodando is True):
             # Se o usuário clicou para fechar, mudamos nossa variável de controle do loop
             rodando = False
             # para False, o que fará com que o 'while' termine na próxima verificação.
+        if event.type == pygame.MOUSEMOTION:
+            # ...atualizamos nossa variável com o tempo atual.
+            ultimo_movimento_mouse = pygame.time.get_ticks()
+            # E garantimos que o mouse esteja visível.
+            pygame.mouse.set_visible(True) 
+        if event.type == pygame.KEYDOWN:
+            # --- Movendo para a Direita ---
+            # Checamos as duas teclas corretamente agora.
+            if event.key == pygame.K_d or event.key == pygame.K_RIGHT:
+                # Usamos o atalho '+= 1' que é mais comum em Python.
+                indice_selecionado_teclado += 1
 
+            # --- Movendo para a Esquerda ---
+            elif event.key == pygame.K_a or event.key == pygame.K_LEFT:
+                # Usamos o atalho '-= 1'.
+                indice_selecionado_teclado -= 1
 
+            # --- CONTROLE DE LIMITES (DEPOIS de mover) ---
+            # Garante que o índice não passe do número de cartas.
+            # Se o jogador tiver 5 cartas (índices 0 a 4), len(jogador1.mao)-1 será 4.
+            # A função min() pega o menor valor entre os dois.
+            if indice_selecionado_teclado > len(jogador1.mao) - 1:
+                indice_selecionado_teclado = len(jogador1.mao) - 1
+            
+            # Garante que o índice não seja menor que 0.
+            # A função max() pega o maior valor entre os dois.
+            if indice_selecionado_teclado < 0:
+                indice_selecionado_teclado = 0
+            
+        
+    if pygame.time.get_ticks() - ultimo_movimento_mouse > 4000:
+        # Se for, mandamos o Pygame esconder o cursor.
+            pygame.mouse.set_visible(False)
     # --- Bloco 3.2: Lógica de Desenho e Interação (VERSÃO CORRIGIDA) ---
     tela.fill(COR_MESA)
     
@@ -117,15 +157,23 @@ while(rodando is True):
         for i, carta in enumerate(jogador1.mao):
             # Pegamos o rect correspondente da lista.
             rect_original = lista_de_rects_da_mao[i]
-            
+            rect_para_desenhar = rect_original.copy()
             # Verificamos se esta é a carta que deve levitar.
             if i == indice_carta_hover:
                 # Se for, criamos uma CÓPIA do rect e a movemos para cima.
-                rect_para_desenhar = rect_original.copy()
+                
                 rect_para_desenhar.y = POSICAO_Y_MAO - 30
-            else:
-                # Se não for, usamos o rect original.
-                rect_para_desenhar = rect_original
+            elif indice_carta_hover == -1 and i == indice_selecionado_teclado:
+                rect_para_desenhar.y = POSICAO_Y_MAO - 30 # Move para cima
+                # ...então a seleção do teclado assume, e esta é a carta que levita.
+                # Mude a coordenada Y do rect_para_desenhar para a mesma altura de levitação.
+                
+            # Se nenhuma das condições acima for verdadeira, o rect_para_desenhar
+            # continuará na sua posição original, e a carta não levitará.
+            
+            # Finalmente, desenhe a imagem da carta na tela, usando o rect_para_desenhar.
+            # A posição dele estará normal ou levitada, dependendo das condições acima.
+           
             
             # Desenhamos a imagem da carta usando o rect final.
             tela.blit(carta.imagem, rect_para_desenhar)
