@@ -104,11 +104,11 @@ class Jogo:
         """
         # --- LÓGICA DE REGRAS MOVIDA DA MAIN ---
         jogador = self.jogadores[indice_jogador]
-        
+        angulo_rotacao = random.uniform(-25,25)
         # A verificação de segurança agora acontece aqui, no "servidor".
         if jogador.mao and 0 <= indice_carta_na_mao < len(jogador.mao):
             carta_jogada = jogador.mao.pop(indice_carta_na_mao)
-            self.vaza_atual.append(carta_jogada)
+            self.vaza_atual.append((carta_jogada, indice_jogador, angulo_rotacao))
             print(f"{jogador.nome} jogou: {carta_jogada}") # Feedback para debug
             return True # A jogada foi bem-sucedida
             

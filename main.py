@@ -4,8 +4,29 @@
 
 import pygame
 import sys
+import math
 # --- ALTERADO: Agora só precisamos importar a classe principal Jogo ---
 from classes import Jogo
+# --- Bloco #: Funções Auxiliares ---
+# --- NOVA FUNÇÃO AUXILIAR ---
+# Calcula as posições (x, y) para cada jogador ao redor de um ponto central.
+def calcular_posicoes_jogadores(num_jogadores, centro, raio):
+    posicoes_dos_jogadores = []
+    for i in range(num_jogadores):
+        #Começando do 90 graus que é a posição do primeiro jogador
+        angulo_em_graus = 90 + 360/num_jogadores * i
+        angulo_radianos = math.radians(angulo_em_graus)
+
+        deslocamento_x = raio*math.cos(angulo_radianos)
+        deslocamento_y = raio*math.sin(angulo_radianos)
+        
+        pos_x = centro[0] + deslocamento_x
+        pos_y = centro[1] + deslocamento_y
+
+        posicoes_dos_jogadores.append((pos_x, pos_y))
+    return posicoes_dos_jogadores
+# Começa o jogador 0 em 270 graus (base da tela).
+# Comente o código para eu escrever
 
 # --- Bloco 2: Constantes e Configurações ---
 # (Nenhuma mudança aqui, seu bloco de constantes está perfeito)
@@ -17,9 +38,12 @@ LARGURA_CARTA = 100
 ESPACAMENTO_ENTRE_CARTAS = LARGURA_CARTA / 3
 COR_MESA = (7, 99, 36)
 CENTRO_DA_TELA = (LARGURA_TELA // 2, ALTURA_TELA // 2)
+CENTRO_DA_MESA = (CENTRO_DA_TELA[0], CENTRO_DA_TELA[1]-50)
 COR_MESA_ESCURA = (80, 42, 25)
 COR_MESA_CLARA = (160, 69, 19)
-
+RAIO_MAIOR = 240
+RAIO_MENOR = 180
+RAIO_JOGADA = RAIO_MAIOR - 30
 # --- Inicialização do Pygame e da Tela ---
 pygame.init()
 tela = pygame.display.set_mode((LARGURA_TELA, ALTURA_TELA))
@@ -28,8 +52,10 @@ pygame.display.set_caption("Canga")
 # --- ALTERADO: Bloco 2.5 agora é muito mais simples ---
 # Toda a lógica de criar baralho, jogadores e distribuir foi para a classe Jogo.
 # O 'main' agora só precisa criar uma instância do Jogo.
+
 nosso_jogo = Jogo(numero_de_jogadores=2) # Você pode mudar o número aqui para testar
 
+POSICOES_JOGADA = calcular_posicoes_jogadores(len(nosso_jogo.jogadores),CENTRO_DA_MESA,RAIO_JOGADA)
 # --- Variáveis de Estado da INTERFACE (não do jogo) ---
 ultimo_movimento_mouse = pygame.time.get_ticks()
 indice_selecionado_teclado = 0
@@ -92,8 +118,8 @@ while rodando:
     tela.fill(COR_MESA)
     pos_mouse = pygame.mouse.get_pos()
     # Desenha a mesa
-    pygame.draw.circle(tela, COR_MESA_CLARA, CENTRO_DA_TELA, 240)
-    pygame.draw.circle(tela, COR_MESA_ESCURA, CENTRO_DA_TELA, 180)
+    pygame.draw.circle(tela, COR_MESA_CLARA, CENTRO_DA_MESA, RAIO_MAIOR)
+    pygame.draw.circle(tela, COR_MESA_ESCURA, CENTRO_DA_MESA, RAIO_MENOR)
     
     
     # --- NOVO: Desenha as cartas na vaza (na mesa) ---
@@ -103,10 +129,17 @@ while rodando:
         # Cria uma versão reduzida da imagem da carta (35% do tamanho)
         nova_largura = int(LARGURA_CARTA * 0.35)
         nova_altura = int((LARGURA_CARTA * 1.4) * 0.35) # Mantém a proporção
-        imagem_menor = pygame.transform.scale(carta_na_mesa.imagem, (nova_largura, nova_altura))
+        imagem_menor = pygame.transform.scale(carta_na_mesa[0].imagem, (nova_largura, nova_altura))
+        # d. Gira a imagem pequena usando o ângulo que pegamos da vaza.
+        imagem_rotacionada = pygame.transform.rotate(imagem_menor, carta_na_mesa[2])
         
-        rect_menor = imagem_menor.get_rect(center=POSICAO_JOGADA_J1)
-        tela.blit(imagem_menor, rect_menor)
+        # e. Executa o "truque do pivô" para a rotação não mudar a posição central.
+        #    Isso garante que a carta gire em torno do seu próprio centro.
+        rect_rotacionado = imagem_rotacionada.get_rect(center = POSICOES_JOGADA[carta_na_mesa[1]])
+        
+        # f. Finalmente, desenhe a imagem ROTACIONADA na posição do rect ROTACIONADO.
+        tela.blit(imagem_rotacionada, rect_rotacionado)
+
 
     # --- Lógica de Desenho da Mão ---
     # --- ALTERADO: Pega os dados do objeto 'nosso_jogo' ---
