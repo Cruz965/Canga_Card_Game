@@ -139,7 +139,7 @@ while rodando:
                     # Guarda o estado: a carta, seu índice original, e o offset.
                     carta_sendo_arrastada = (carta_clicada, indice_original, (offset_x, offset_y))
         
- # --- LÓGICA FINAL PARA "SOLTAR" A CARTA ---
+     # --- Lógica para "Soltar" a Carta ---
         if event.type == pygame.MOUSEBUTTONUP:
             if event.button == 1: # Botão esquerdo do mouse
                 if carta_sendo_arrastada:
@@ -151,16 +151,13 @@ while rodando:
                     pos_soltura_y = event.pos[1] - offset[1]
                     rect_solto = carta_obj.imagem.get_rect(topleft=(pos_soltura_x, pos_soltura_y))
 
-                    # Verifica se a carta foi solta na MESA para ser JOGADA.
+                    # 1. A carta foi solta na MESA?
                     if MESA_RECT.colliderect(rect_solto):
-                        # Manda a ordem para o "motor" do jogo. Agora vai funcionar!
                         nosso_jogo.jogador_tenta_jogar_carta(0, carta_obj)
                     
-                    # Se não, verifica se foi solta na MÃO para ser REORDENADA.
                     else:
-                        # Cria a área da mão para checagem.
+                        # Se não foi na mesa, foi na mão ou perto dela?
                         area_da_mao_rect = None
-                        # Usamos o método manual que é mais robusto.
                         if lista_de_rects_da_mao:
                             primeiro_rect = lista_de_rects_da_mao[0]
                             ultimo_rect = lista_de_rects_da_mao[-1]
@@ -169,25 +166,35 @@ while rodando:
                                 ultimo_rect.right - primeiro_rect.left, primeiro_rect.height
                             )
                         
+                        # 2. A carta foi solta EXATAMENTE sobre a MÃO?
                         if area_da_mao_rect and area_da_mao_rect.colliderect(rect_solto):
-                            # LARGADA VÁLIDA NA MÃO (REORDENAR)
-                            # Remove a carta de sua posição original primeiro.
+                            # Lógica para reordenar com precisão.
                             carta_removida = nosso_jogo.jogadores[0].mao.pop(indice_original)
-                            
-                            # Encontra o novo índice para inserir.
                             novo_indice = len(nosso_jogo.jogadores[0].mao)
                             for i, rect_na_mao in enumerate(lista_de_rects_da_mao):
-                                if i == indice_original: continue # Pula o espaço vazio
+                                if i == indice_original: continue
                                 if rect_solto.centerx < rect_na_mao.centerx:
                                     novo_indice = i
                                     break
-                            # Insere a carta na nova posição.
                             nosso_jogo.jogadores[0].mao.insert(novo_indice, carta_removida)
                         
-                        # Se não foi na mesa nem na mão, não fazemos nada, a carta
-                        # já está na mão e simplesmente paramos de arrastá-la.
+                        # --- SUA NOVA REGRA AQUI ---
+                        # 3. SENÃO, a carta foi solta ABAIXO da linha da MÃO?
+                        elif area_da_mao_rect and rect_solto.centery > area_da_mao_rect.top:
+                            # Remove a carta da posição original.
+                            carta_removida = nosso_jogo.jogadores[0].mao.pop(indice_original)
+                            
+                            # Se soltou à esquerda do centro da mão, insere no início.
+                            if rect_solto.centerx < area_da_mao_rect.centerx:
+                                nosso_jogo.jogadores[0].mao.insert(0, carta_removida)
+                            # Senão, insere no final.
+                            else:
+                                nosso_jogo.jogadores[0].mao.append(carta_removida)
+                        
+                        # Se nenhuma condição for atendida, nada acontece,
+                        # e a carta "volta" para o lugar quando paramos de arrastar.
 
-                    # ESSENCIAL: Limpa a variável de estado, "soltando" a carta do mouse.
+                    # Limpa a variável de estado, "soltando" a carta do mouse.
                     carta_sendo_arrastada = None
 
                     
