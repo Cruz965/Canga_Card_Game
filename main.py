@@ -44,6 +44,10 @@ COR_MESA_CLARA = (160, 69, 19)
 RAIO_MAIOR = 240
 RAIO_MENOR = 180
 RAIO_JOGADA = RAIO_MAIOR - 30
+DIAMETRO_MESA_INTERNA = RAIO_MENOR * 2
+lado = DIAMETRO_MESA_INTERNA / math.sqrt(2)
+MESA_RECT = pygame.Rect(0, 0, lado, lado)
+MESA_RECT.center = CENTRO_DA_MESA
 # --- Inicialização do Pygame e da Tela ---
 pygame.init()
 tela = pygame.display.set_mode((LARGURA_TELA, ALTURA_TELA))
@@ -59,6 +63,7 @@ POSICOES_JOGADA = calcular_posicoes_jogadores(len(nosso_jogo.jogadores),CENTRO_D
 # --- Variáveis de Estado da INTERFACE (não do jogo) ---
 ultimo_movimento_mouse = pygame.time.get_ticks()
 indice_selecionado_teclado = 0
+carta_sendo_arrastada = None
 mao_visivel = True
 rodando = True
 
@@ -84,18 +89,24 @@ while rodando:
             
             # --- ALTERADO: Ação de Jogar Carta ---
             elif event.key == pygame.K_RETURN:
-                # O 'main' não sabe as regras. Ele apenas informa a INTENÇÃO ao motor do jogo.
-                # Primeiro, pegamos o jogador humano (índice 0)
+                # Pega o jogador humano.
                 jogador_humano = nosso_jogo.jogadores[0]
                 
-                # Se o mouse estiver sobre uma carta, ela tem prioridade.
-                if indice_carta_hover != -1:
-                    indice_para_jogar = indice_carta_hover
-                else:
-                    indice_para_jogar = indice_selecionado_teclado
-                
-                # Manda a ordem para o "motor" do jogo.
-                nosso_jogo.jogador_tenta_jogar_carta(0, indice_para_jogar)
+                # Só tenta jogar se o jogador tiver cartas e não estiver arrastando uma.
+                if jogador_humano.mao and not carta_sendo_arrastada:
+                    
+                    # Decide qual índice usar (prioridade do mouse).
+                    if indice_carta_hover != -1:
+                        indice_para_jogar = indice_carta_hover
+                    else:
+                        indice_para_jogar = indice_selecionado_teclado
+                    
+                    # --- A CORREÇÃO ESTÁ AQUI ---
+                    # 1. Pega o OBJETO da carta usando o índice que encontramos.
+                    carta_para_jogar = jogador_humano.mao[indice_para_jogar]
+                    
+                    # 2. Manda a ordem para o "motor" do jogo, enviando o OBJETO da carta.
+                    nosso_jogo.jogador_tenta_jogar_carta(0, carta_para_jogar)
 
             # --- ALTERADO: O controle de limites agora precisa verificar se a mão existe ---
             # Pegamos a mão do jogador a partir do objeto 'nosso_jogo'.
@@ -107,8 +118,83 @@ while rodando:
                     indice_selecionado_teclado = 0
 
         if event.type == pygame.MOUSEBUTTONDOWN:
+            # Botão direito para alternar a visibilidade (sem mudança aqui)
             if event.button == 3:
                 mao_visivel = not mao_visivel
+            
+            # Botão esquerdo para "Agarrar" a carta
+            if event.button == 1:
+                # Só podemos agarrar uma carta se a mão estiver visível e não estivermos já arrastando outra.
+                if mao_visivel and indice_carta_hover != -1 and not carta_sendo_arrastada:
+                    
+                    # Pega a carta e seu índice original. ATENÇÃO: não removemos mais a carta da mão aqui.
+                    carta_clicada = nosso_jogo.jogadores[0].mao[indice_carta_hover]
+                    indice_original = indice_carta_hover
+                    
+                    # Calcula o offset do clique em relação ao canto da carta.
+                    rect_da_carta_clicada = lista_de_rects_da_mao[indice_carta_hover]
+                    offset_x = event.pos[0] - rect_da_carta_clicada.x
+                    offset_y = event.pos[1] - rect_da_carta_clicada.y
+                    
+                    # Guarda o estado: a carta, seu índice original, e o offset.
+                    carta_sendo_arrastada = (carta_clicada, indice_original, (offset_x, offset_y))
+        
+ # --- LÓGICA FINAL PARA "SOLTAR" A CARTA ---
+        if event.type == pygame.MOUSEBUTTONUP:
+            if event.button == 1: # Botão esquerdo do mouse
+                if carta_sendo_arrastada:
+                    # Desempacota os dados da carta.
+                    carta_obj, indice_original, offset = carta_sendo_arrastada
+                    
+                    # Cria o rect da carta na posição em que foi solta.
+                    pos_soltura_x = event.pos[0] - offset[0]
+                    pos_soltura_y = event.pos[1] - offset[1]
+                    rect_solto = carta_obj.imagem.get_rect(topleft=(pos_soltura_x, pos_soltura_y))
+
+                    # Verifica se a carta foi solta na MESA para ser JOGADA.
+                    if MESA_RECT.colliderect(rect_solto):
+                        # Manda a ordem para o "motor" do jogo. Agora vai funcionar!
+                        nosso_jogo.jogador_tenta_jogar_carta(0, carta_obj)
+                    
+                    # Se não, verifica se foi solta na MÃO para ser REORDENADA.
+                    else:
+                        # Cria a área da mão para checagem.
+                        area_da_mao_rect = None
+                        # Usamos o método manual que é mais robusto.
+                        if lista_de_rects_da_mao:
+                            primeiro_rect = lista_de_rects_da_mao[0]
+                            ultimo_rect = lista_de_rects_da_mao[-1]
+                            area_da_mao_rect = pygame.Rect(
+                                primeiro_rect.left, primeiro_rect.top,
+                                ultimo_rect.right - primeiro_rect.left, primeiro_rect.height
+                            )
+                        
+                        if area_da_mao_rect and area_da_mao_rect.colliderect(rect_solto):
+                            # LARGADA VÁLIDA NA MÃO (REORDENAR)
+                            # Remove a carta de sua posição original primeiro.
+                            carta_removida = nosso_jogo.jogadores[0].mao.pop(indice_original)
+                            
+                            # Encontra o novo índice para inserir.
+                            novo_indice = len(nosso_jogo.jogadores[0].mao)
+                            for i, rect_na_mao in enumerate(lista_de_rects_da_mao):
+                                if i == indice_original: continue # Pula o espaço vazio
+                                if rect_solto.centerx < rect_na_mao.centerx:
+                                    novo_indice = i
+                                    break
+                            # Insere a carta na nova posição.
+                            nosso_jogo.jogadores[0].mao.insert(novo_indice, carta_removida)
+                        
+                        # Se não foi na mesa nem na mão, não fazemos nada, a carta
+                        # já está na mão e simplesmente paramos de arrastá-la.
+
+                    # ESSENCIAL: Limpa a variável de estado, "soltando" a carta do mouse.
+                    carta_sendo_arrastada = None
+
+                    
+
+                    
+
+
                 
     # Verificação de inatividade do mouse
     if pygame.time.get_ticks() - ultimo_movimento_mouse > 4000:
@@ -167,6 +253,9 @@ while rodando:
                 break
         
         for i, carta in enumerate(cartas_da_mao):
+            if carta_sendo_arrastada and carta is carta_sendo_arrastada[0]:
+                continue # 'continue' pula para a próxima iteração do loop.
+
             rect_para_desenhar = lista_de_rects_da_mao[i]
             
             if i == indice_carta_hover or (indice_carta_hover == -1 and i == indice_selecionado_teclado):
@@ -175,6 +264,18 @@ while rodando:
                 tela.blit(carta.imagem, rect_modificado)
             else:
                 tela.blit(carta.imagem, rect_para_desenhar)
+    if carta_sendo_arrastada:
+        carta_obj, indice, offset = carta_sendo_arrastada
+        imagem_arrastada = carta_obj.imagem
+        nova_pos_x = pos_mouse[0]-offset[0]
+        nova_pos_y = pos_mouse[1]-offset[1]
+
+        rect_arrastado = imagem_arrastada.get_rect(topleft=(nova_pos_x,nova_pos_y))
+        tela.blit(imagem_arrastada, rect_arrastado)   
+
+   
+
+
 
     # --- 3.3: Atualização da Tela ---
     pygame.display.flip()

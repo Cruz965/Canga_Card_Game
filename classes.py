@@ -97,20 +97,17 @@ class Jogo:
         for jogador in self.jogadores:
             self.baralho.distribuir(jogador, 5)
 
-    def jogador_tenta_jogar_carta(self, indice_jogador, indice_carta_na_mao):
-        """
-        Método central que contém as regras para uma jogada.
-        Recebe a intenção de um jogador e a valida antes de alterar o estado do jogo.
-        """
-        # --- LÓGICA DE REGRAS MOVIDA DA MAIN ---
+    # Dentro da class Jogo:
+    def jogador_tenta_jogar_carta(self, indice_jogador, carta_obj):
         jogador = self.jogadores[indice_jogador]
-        angulo_rotacao = random.uniform(-25,25)
-        # A verificação de segurança agora acontece aqui, no "servidor".
-        if jogador.mao and 0 <= indice_carta_na_mao < len(jogador.mao):
-            carta_jogada = jogador.mao.pop(indice_carta_na_mao)
-            self.vaza_atual.append((carta_jogada, indice_jogador, angulo_rotacao))
-            print(f"{jogador.nome} jogou: {carta_jogada}") # Feedback para debug
-            return True # A jogada foi bem-sucedida
+    
+    # A verificação de segurança agora é se a carta realmente existe na mão.
+        if carta_obj in jogador.mao:
+        # Usamos .remove() para tirar o objeto específico da lista.
+            jogador.mao.remove(carta_obj)
+            self.vaza_atual.append((carta_obj, indice_jogador, random.uniform(-15, 15)))
+            return True
+        return False
             
         print(f"{jogador.nome} tentou uma jogada inválida.") # Feedback para debug
         return False # A jogada falhou
