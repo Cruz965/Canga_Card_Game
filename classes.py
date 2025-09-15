@@ -10,7 +10,7 @@ class Carta:
         # Atributos básicos da carta
         self.valor = valor
         self.naipe = naipe
-
+       
         # Lógica para construir o nome do arquivo da imagem e carregá-la
         valor_para_nome = {
             1: 'as', 2: 'dois', 3: 'tres', 4: 'quatro', 5: 'cinco', 
@@ -68,7 +68,8 @@ class Jogador:
         self.eh_humano = eh_humano
         self.mao = []
         self.vidas = 5
-        
+        self.promessa_atual = -1
+        self.cartas_prometidas = []
     def __repr__(self):
         return f"Jogador {self.nome} com {len(self.mao)} cartas"
 
@@ -78,10 +79,11 @@ class Jogo:
     Orquestra todas as regras e o estado do jogo.
     Esta classe não sabe nada sobre Pygame ou desenhos, apenas sobre as regras.
     """
+
     def __init__(self, numero_de_jogadores=2):
         self.baralho = Baralho()
         self.baralho.embaralhar()
-        
+        self.turno_atual = 0
         # Cria a lista de jogadores.
         self.jogadores = []
         # Adiciona o jogador humano.
@@ -89,25 +91,50 @@ class Jogo:
         # Adiciona os jogadores controlados pela IA.
         for i in range(numero_de_jogadores - 1):
             self.jogadores.append(Jogador(f"IA_{i+1}"))
-            
+        self.fase_do_jogo = "PROMETENDO"     
         self.vaza_atual = [] # Lista para guardar as cartas jogadas na rodada.
         
         # --- LÓGICA MOVIDA DA MAIN ---
         # A distribuição de cartas agora é responsabilidade do Jogo.
         for jogador in self.jogadores:
             self.baralho.distribuir(jogador, 5)
+    
+    def avancar_turno(self):
+        """Avança o turno para o próximo jogador de forma circular."""
+        
+        # Pega o número de jogadores diretamente da lista de jogadores.
+        num_jogadores = len(self.jogadores)
+        
+        # Calcula o próximo turno usando o número real de jogadores e atualiza a variável.
+        self.turno_atual = (self.turno_atual + 1) % num_jogadores
 
     # Dentro da class Jogo:
     def jogador_tenta_jogar_carta(self, indice_jogador, carta_obj):
+        # --- NOVA VERIFICAÇÃO NO INÍCIO ---
+        # a. Verifique se o 'indice_jogador' que está tentando jogar
+        #    é diferente do 'self.turno_atual'.
+       
+        if indice_jogador != self.turno_atual:
+            print("Erro! Vez de um jogador diferente", flush=True)
+            return False
+            # Se for diferente, não é a vez dele!
+            # Imprima uma mensagem de erro para debug.
+            # E retorne False para indicar que a jogada falhou.
+            
         jogador = self.jogadores[indice_jogador]
     
     # A verificação de segurança agora é se a carta realmente existe na mão.
         if carta_obj in jogador.mao:
         # Usamos .remove() para tirar o objeto específico da lista.
+            
             jogador.mao.remove(carta_obj)
             self.vaza_atual.append((carta_obj, indice_jogador, random.uniform(-15, 15)))
+            print(f"{jogador.nome} jogou: {carta_obj}", flush=True)
+            self.avancar_turno()
+
             return True
+        
         return False
             
-        print(f"{jogador.nome} tentou uma jogada inválida.") # Feedback para debug
+        print(f"{jogador.nome} jogou: {carta_jogada}", flush=True)
         return False # A jogada falhou
