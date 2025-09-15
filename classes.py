@@ -107,7 +107,19 @@ class Jogo:
         
         # Calcula o próximo turno usando o número real de jogadores e atualiza a variável.
         self.turno_atual = (self.turno_atual + 1) % num_jogadores
+         # --- NOVA LÓGICA: Checagem de Fim de Fase de Promessas ---
+        
+        # a. Verifique se a fase atual do jogo é "PROMETENDO"
+        #    E se o turno acabou de voltar para o primeiro jogador (ou seja, se self.turno_atual é 0).
+        if self.fase_do_jogo == "PROMETENDO" and self.turno_atual == 0:
 
+            # b. Se as duas condições forem verdadeiras, a fase de promessas acabou!
+            #    Mude o valor de 'self.fase_do_jogo' para "JOGANDO".
+            self.fase_do_jogo = "JOGANDO"
+            print("\n--- FASE DE JOGO INICIADA ---", flush=True)
+            # c. Adicione um print() com flush=True para nos dar um feedback no terminal
+            #    de que a fase mudou com sucesso.
+            #    Ex: 
     # Dentro da class Jogo:
     def jogador_tenta_jogar_carta(self, indice_jogador, carta_obj):
         # --- NOVA VERIFICAÇÃO NO INÍCIO ---
@@ -138,3 +150,59 @@ class Jogo:
             
         print(f"{jogador.nome} jogou: {carta_jogada}", flush=True)
         return False # A jogada falhou
+    # Dentro da sua class Jogo, em classes.py
+
+    # Encontre o método que criamos (ou crie-o agora)
+   # Dentro da class Jogo, em classes.py
+
+    def processar_promessa_ia(self):
+        """
+        Processa a lógica para um jogador IA fazer sua promessa,
+        incluindo a regra da "Soma Impossível".
+        """
+        # Verificação de segurança: só roda na fase de promessas.
+        if self.fase_do_jogo != "PROMETENDO":
+            return
+
+        ia_jogador = self.jogadores[self.turno_atual]
+        num_cartas_na_mao = len(ia_jogador.mao)
+        
+        # Caso especial: se a IA não tem cartas, a promessa é 0.
+        if num_cartas_na_mao == 0:
+            ia_jogador.promessa_atual = 0
+            print(f"{ia_jogador.nome} prometeu fazer 0 vazas.", flush=True)
+            self.avancar_turno()
+            return
+
+        # Gera uma promessa aleatória inicial.
+        promessa_ia = random.randint(0, num_cartas_na_mao)
+
+        # --- LÓGICA DA SOMA IMPOSSÍVEL ---
+        # Verifica se a IA é a última a prometer.
+        if self.turno_atual == len(self.jogadores) - 1:
+            
+            # Soma as promessas dos jogadores anteriores.
+            soma_promessas_anteriores = 0
+            # A fatia self.jogadores[:self.turno_atual] pega todos os jogadores ANTES do atual.
+            for jogador in self.jogadores[:self.turno_atual]:
+                soma_promessas_anteriores += jogador.promessa_atual
+            
+            # Calcula o número proibido.
+            promessa_proibida = num_cartas_na_mao - soma_promessas_anteriores
+            
+            # Se a promessa aleatória for a proibida, a IA precisa mudar.
+            if promessa_ia == promessa_proibida:
+                # Uma regra simples para mudar a promessa.
+                if promessa_ia < num_cartas_na_mao:
+                    promessa_ia += 1
+                else:
+                    promessa_ia -= 1
+        
+        # Atribui a promessa final (original ou corrigida) ao jogador.
+        ia_jogador.promessa_atual = promessa_ia
+        
+        # Anuncia a promessa da IA.
+        print(f"{ia_jogador.nome} prometeu fazer {ia_jogador.promessa_atual} vazas.", flush=True)
+
+        # Avança o turno para o próximo jogador (ou para a próxima fase).
+        self.avancar_turno()

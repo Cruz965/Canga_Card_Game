@@ -48,6 +48,7 @@ DIAMETRO_MESA_INTERNA = RAIO_MENOR * 2
 lado = DIAMETRO_MESA_INTERNA / math.sqrt(2)
 MESA_RECT = pygame.Rect(0, 0, lado, lado)
 MESA_RECT.center = CENTRO_DA_MESA
+CAIXA_PROMESSA_RECT = pygame.Rect(LARGURA_TELA - 120, ALTURA_TELA - 120, 80, 80)
 # --- Inicialização do Pygame e da Tela ---
 pygame.init()
 tela = pygame.display.set_mode((LARGURA_TELA, ALTURA_TELA))
@@ -56,9 +57,9 @@ pygame.display.set_caption("Canga")
 # --- ALTERADO: Bloco 2.5 agora é muito mais simples ---
 # Toda a lógica de criar baralho, jogadores e distribuir foi para a classe Jogo.
 # O 'main' agora só precisa criar uma instância do Jogo.
-
+INDICE_JOGADOR_LOCAL = 0
 nosso_jogo = Jogo(numero_de_jogadores=2) # Você pode mudar o número aqui para testar
-jogador_local = nosso_jogo.jogadores[0]
+jogador_local = nosso_jogo.jogadores[INDICE_JOGADOR_LOCAL ]
 POSICOES_JOGADA = calcular_posicoes_jogadores(len(nosso_jogo.jogadores),CENTRO_DA_MESA,RAIO_JOGADA)
 # --- Variáveis de Estado da INTERFACE (não do jogo) ---
 ultimo_movimento_mouse = pygame.time.get_ticks()
@@ -110,6 +111,12 @@ while rodando:
                 indice_selecionado_teclado += 1
             elif event.key == pygame.K_a or event.key == pygame.K_LEFT:
                 indice_selecionado_teclado -= 1
+            elif event.key == pygame.K_o:
+                if nosso_jogo.fase_do_jogo == "PROMETENDO" and nosso_jogo.turno_atual == INDICE_JOGADOR_LOCAL:
+                    jogador_local.promessa_atual = len(jogador_local.cartas_prometidas)
+                    jogador_local.cartas_prometidas.clear()
+                    nosso_jogo.avancar_turno()
+
             elif event.key == pygame.K_SPACE:
                 mao_visivel = not mao_visivel
             elif event.key == pygame.K_RETURN:
@@ -117,9 +124,9 @@ while rodando:
                     indice_para_jogar = indice_carta_hover if indice_carta_hover != -1 else indice_selecionado_teclado
                     if 0 <= indice_para_jogar < len(jogador_local.mao):
                         carta_para_jogar = jogador_local.mao[indice_para_jogar]
-                        nosso_jogo.jogador_tenta_jogar_carta(0, carta_para_jogar)
+                        nosso_jogo.jogador_tenta_jogar_carta(INDICE_JOGADOR_LOCAL , carta_para_jogar)
             elif event.key == pygame.K_p:
-                if nosso_jogo.fase_do_jogo == "PROMETENDO" and nosso_jogo.turno_atual == 0:
+                if nosso_jogo.fase_do_jogo == "PROMETENDO" and nosso_jogo.turno_atual == INDICE_JOGADOR_LOCAL:
                     if jogador_local.mao:
                         carta_selecionada = jogador_local.mao[indice_selecionado_teclado]
                         if carta_selecionada in jogador_local.cartas_prometidas:
@@ -133,6 +140,12 @@ while rodando:
             
             # --- CORREÇÃO DA LÓGICA DO CLIQUE ESQUERDO ---
             if event.button == 1:
+                if nosso_jogo.fase_do_jogo == "PROMETENDO" and nosso_jogo.turno_atual == INDICE_JOGADOR_LOCAL:
+                    
+                    if CAIXA_PROMESSA_RECT.collidepoint(event.pos):
+                        jogador_local.promessa_atual = len(jogador_local.cartas_prometidas)
+                        jogador_local.cartas_prometidas.clear()
+                        nosso_jogo.avancar_turno()
                 is_double_click = False
                 if mao_visivel and indice_carta_hover != -1:
                     tempo_atual = pygame.time.get_ticks()
@@ -142,7 +155,7 @@ while rodando:
 
                 # Se for um double-click, a ação é de PROMESSA.
                 if is_double_click:
-                    if nosso_jogo.fase_do_jogo == "PROMETENDO" and nosso_jogo.turno_atual == 0:
+                    if nosso_jogo.fase_do_jogo == "PROMETENDO" and nosso_jogo.turno_atual == INDICE_JOGADOR_LOCAL :
                         carta_selecionada = jogador_local.mao[indice_carta_hover]
                         if carta_selecionada in jogador_local.cartas_prometidas:
                             jogador_local.cartas_prometidas.remove(carta_selecionada)
@@ -208,13 +221,56 @@ while rodando:
             
     if pygame.time.get_ticks() - ultimo_movimento_mouse > 4000:
         pygame.mouse.set_visible(False)
-        
+      
+    # --- NOVA LÓGICA: Processa o turno de promessa da IA ---
+    
+    # a. Verifique se a fase do jogo é "PROMETENDO".
+    if nosso_jogo.fase_do_jogo == "PROMETENDO":
+        # b. Se for, pegue o objeto do jogador do turno atual.
+        #    Dica: jogador_do_turno = nosso_jogo.jogadores[nosso_jogo.turno_atual]
+        jogador_do_turno = nosso_jogo.jogadores[nosso_jogo.turno_atual]
+        # c. Verifique se o jogador do turno atual NÃO é humano.
+        #    Dica: if not jogador_do_turno.eh_humano:
+        if not jogador_do_turno.eh_humano:
+
+            # d. Se for a vez da IA prometer, chame o novo método do nosso motor de jogo.
+            #    Dica: nosso_jogo.processar_promessa_ia()    
+            nosso_jogo.processar_promessa_ia()
     # --- 3.2: DESENHO ---
     # (Seu bloco de desenho está perfeito, sem mudanças)
     tela.fill(COR_MESA)
     pygame.draw.circle(tela, COR_MESA_ESCURA, CENTRO_DA_MESA, RAIO_MAIOR)
     pygame.draw.circle(tela, COR_MESA_CLARA, CENTRO_DA_MESA, RAIO_MENOR)
     
+    # --- DESENHA A CAIXA DE PROMESSA DO JOGADOR LOCAL ---
+    
+    # a. Define o rect para a caixa. Este valor é constante.
+    
+    
+    # b. Desenha o fundo da caixa na tela.
+    pygame.draw.rect(tela, COR_MESA_ESCURA,CAIXA_PROMESSA_RECT)
+    
+    # c. Decide QUAL NÚMERO deve ser mostrado na caixa.
+    numero_para_mostrar = 0
+    if nosso_jogo.fase_do_jogo == "PROMETENDO":
+        # Na fase de promessa, mostra a contagem de cartas verdes.
+        numero_para_mostrar = len(jogador_local.cartas_prometidas)
+    else: # Na fase de "JOGANDO"
+        # Mostra a promessa que foi confirmada.
+        numero_para_mostrar = jogador_local.promessa_atual
+        
+    # d. Converte o número escolhido para string.
+    texto_da_promessa = str(numero_para_mostrar)
+    
+    # e. Renderiza o texto.
+    fonte_promessa = pygame.font.SysFont('Arial', 40, bold=True)
+    surface_texto_promessa = fonte_promessa.render(texto_da_promessa, True, (255, 255, 0))
+    
+    # f. Cria o rect do texto e o centraliza no rect da caixa.
+    rect_texto_promessa = surface_texto_promessa.get_rect(center=CAIXA_PROMESSA_RECT.center)
+    
+    # g. Desenha (blit) o texto na tela.
+    tela.blit(surface_texto_promessa, rect_texto_promessa)
     for carta_jogada, indice_jogador, angulo in nosso_jogo.vaza_atual:
         nova_largura = int(LARGURA_CARTA * 0.35)
         nova_altura = int((LARGURA_CARTA * 1.4) * 0.35)
@@ -255,7 +311,7 @@ while rodando:
         rect_arrastado = imagem_arrastada.get_rect(topleft=(nova_pos_x, nova_pos_y))
         tela.blit(imagem_arrastada, rect_arrastado)
 
-    if nosso_jogo.turno_atual == 0:
+    if nosso_jogo.turno_atual == INDICE_JOGADOR_LOCAL :
         fonte = pygame.font.SysFont('Arial', 30, bold=True)
         texto_surface = fonte.render("Sua Vez!", True, (255, 255, 0))
         texto_rect = texto_surface.get_rect(center=(LARGURA_TELA / 2, 520))
