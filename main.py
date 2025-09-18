@@ -444,24 +444,28 @@ while rodando:
     # a. Define a fonte e as posições iniciais.
    
 
-    # b. Pega as últimas 5 mensagens da forma correta.
-    mensagens_para_exibir = list(nosso_jogo.log_de_jogo)[-5:]
+     # --- DESENHA O LOG DE MENSAGENS (VERSÃO CORRIGIDA) ---
     
-    # c. Percorre a lista de mensagens DE TRÁS PARA FRENTE para desenhar de baixo para cima.
+    # a. Define a fonte para o log. (Isto pode até virar uma constante fora do loop).
+    fonte_log = pygame.font.SysFont('Arial', 18, bold=True)
+    
+    # --- A CORREÇÃO ESTÁ AQUI ---
+    # b. RESETA a posição Y inicial A CADA FRAME, antes do loop de desenho.
+    pos_x_log = 20
+    pos_y_log = ALTURA_TELA - 20 # A "régua" sempre volta para 20 pixels do fundo.
+    altura_linha = fonte_log.get_height() + 3
+
+    # c. Pega as últimas 8 mensagens para exibir, como você queria.
+    mensagens_para_exibir = list(nosso_jogo.log_de_jogo)[-8:]
+    
+    # d. Percorre a lista e desenha de baixo para cima.
     for mensagem_texto in reversed(mensagens_para_exibir):
-        # d. Renderiza a mensagem.
-        surface_mensagem = fonte_log.render(mensagem_texto, True, (255, 255, 0)) # Cor Amarela
-        
-        # e. Posiciona o rect da mensagem usando 'bottomleft' como âncora.
+        surface_mensagem = fonte_log.render(mensagem_texto, True, (255, 255, 255))
         rect_mensagem = surface_mensagem.get_rect(bottomleft=(pos_x_log, pos_y_log))
-        
-        # f. Desenha (blit) a mensagem.
         tela.blit(surface_mensagem, rect_mensagem)
         
-        # g. Move a posição Y para CIMA para a próxima mensagem ser desenhada.
+        # Move a "régua" para cima para a próxima mensagem DENTRO deste frame.
         pos_y_log -= altura_linha
-        #    Dica: y_do_log += altura_da_fonte 
-    # No final do Bloco 3.2 (Desenho), antes do .flip()
 
     # --- NOVO: Desenha o Placar (se estiver visível) ---
     
@@ -543,6 +547,7 @@ while rodando:
                 # Usamos .midtop para alinhar todos os dados pela mesma linha de base.
                 rect_dado = surface_dado.get_rect(midtop=(pos_x, y_linha_atual))
                 tela.blit(surface_dado, rect_dado)
+            
     pygame.display.flip()
 
 # --- 4: Finalização ---

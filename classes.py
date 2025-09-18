@@ -100,6 +100,7 @@ class Jogo:
         # A distribuição de cartas agora é responsabilidade do Jogo.
         for jogador in self.jogadores:
             self.baralho.distribuir(jogador, self.rodada_atual_num_cartas)
+        self.log_de_jogo.append("--- FASE DE PROMESSAS ---")
     
     def avancar_turno(self):
         """Avança o turno para o próximo jogador de forma circular."""
@@ -334,7 +335,7 @@ class Jogo:
         # f. Reseta o estado do jogo para o início de uma nova fase de promessas.
         self.fase_do_jogo = "PROMETENDO"
         self.turno_atual = 0 # O turno sempre volta para o jogador 0 no início da rodada.
-        # Em classes.py, adicione este novo método à class Jogo:
+        self.log_de_jogo.append("--- FASE DE PROMESSAS ---")
 
     def processar_pontuacao_da_rodada(self):
         """
@@ -342,21 +343,27 @@ class Jogo:
         subtrai as vidas, adiciona mensagens ao log e reseta os contadores.
         """
         # a. Adicione uma mensagem ao log do jogo para anunciar o início da pontuação.
-        
+        self.log_de_jogo.append("  --- Pontuação Definida! ---")
         # b. Crie um laço 'for' para percorrer cada 'jogador' na lista 'self.jogadores'.
-        
+        for jogador in self.jogadores:
             # c. Calcule a penalidade: a diferença absoluta (use a função 'abs()') entre a
             #    'promessa_atual' do jogador e suas 'vazas_ganhas'.
-            
+            penalidade = abs(jogador.promessa_atual - jogador.vazas_ganhas)
             # d. Se a penalidade for 0, o jogador acertou a promessa.
             #    Adicione uma mensagem de sucesso ao log do jogo.
             #    Ex: f"{jogador.nome} cumpriu sua promessa ({jogador.promessa_atual})!"
-            
+            if penalidade == 0:
+                self.log_de_jogo.append(f"{jogador.nome} cumpriu sua promessa ({jogador.promessa_atual})!")
             # e. Senão (se a penalidade for maior que 0)...
             #    - Subtraia a penalidade das 'vidas' do jogador.
+            else:
+                jogador.vidas -= penalidade
+                self.log_de_jogo.append(f"{jogador.nome} errou por {penalidade} e perdeu {penalidade} vida(s)")
             #    - Adicione uma mensagem ao log dizendo por quanto ele errou e quantas vidas perdeu.
             #      Ex: f"{jogador.nome} errou por {penalidade} e perdeu {penalidade} vida(s)."
-            
+
+            jogador.vazas_ganhas = 0
+            jogador.promessa_atual = -1
             # f. Independentemente do resultado, resete os contadores da rodada para o próximo ciclo.
             #    - Defina 'jogador.vazas_ganhas' de volta para 0.
             #    - Defina 'jogador.promessa_atual' de volta para -1.
