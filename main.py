@@ -7,6 +7,7 @@ import sys
 import math
 # --- ALTERADO: Agora só precisamos importar a classe principal Jogo ---
 from classes import Jogo
+pygame.init()
 # --- Bloco #: Funções Auxiliares ---
 # --- NOVA FUNÇÃO AUXILIAR ---
 # Calcula as posições (x, y) para cada jogador ao redor de um ponto central.
@@ -70,7 +71,8 @@ lado = DIAMETRO_MESA_INTERNA / math.sqrt(2)
 MESA_RECT = pygame.Rect(0, 0, lado, lado)
 MESA_RECT.center = CENTRO_DA_MESA
 CAIXA_PROMESSA_RECT = pygame.Rect(LARGURA_TELA - 120, ALTURA_TELA - 120, 80, 80)
-
+FONTE_PADRAO = pygame.font.SysFont('Arial', 24, bold=True)
+FONTE_LOG = pygame.font.SysFont('Arial', 18, bold=True)
 fonte_log = pygame.font.SysFont('Arial', 14, bold=True)
 # A primeira linha será desenhada a 20 pixels da borda inferior.
 pos_x_log = 20
@@ -80,7 +82,7 @@ altura_linha = fonte_log.get_height() + 3
 
 VERSO_CARTA_IMG = pygame.image.load('assets/back_side_g22.png')
 # --- Inicialização do Pygame e da Tela ---
-pygame.init()
+
 tela = pygame.display.set_mode((LARGURA_TELA, ALTURA_TELA))
 pygame.display.set_caption("Canga")
 
@@ -100,8 +102,8 @@ rodando = True
 ultimo_clique_tempo = 0
 # --- Bloco 3: O Loop Principal do Jogo (VERSÃO REESTRUTURADA) ---
 rodando = True
-placar_visivel = False
 
+placar_visivel = False
 while rodando:
 
     # --- 3.0: PREPARAÇÃO DO FRAME ---
@@ -169,6 +171,16 @@ while rodando:
                             jogador_local.cartas_prometidas.remove(carta_selecionada)
                         else:
                             jogador_local.cartas_prometidas.append(carta_selecionada)
+            # Dentro do seu 'if event.type == pygame.KEYDOWN:'
+        
+        # ... (seu código para A/D/Setas, Espaço, Enter e 'P' continua aqui) ...
+
+        # --- NOVA LÓGICA: Alterna a visibilidade do placar ---
+        # a. Adicione um 'elif' para checar se a tecla pressionada foi a Tab (pygame.K_TAB).
+            elif event.key == pygame.K_TAB:
+            # b. Dentro dele, inverta o valor de 'placar_visivel'.
+                placar_visivel = not placar_visivel
+            #    Dica: placar_visivel = not placar_visivel
 
         if event.type == pygame.MOUSEBUTTONDOWN:
             # Lida com o botão direito para alternar a visibilidade da mão.
@@ -449,7 +461,88 @@ while rodando:
         # g. Move a posição Y para CIMA para a próxima mensagem ser desenhada.
         pos_y_log -= altura_linha
         #    Dica: y_do_log += altura_da_fonte 
-    # --- 3.3: ATUALIZAÇÃO DA TELA ---
+    # No final do Bloco 3.2 (Desenho), antes do .flip()
+
+    # --- NOVO: Desenha o Placar (se estiver visível) ---
+    
+    # a. Verifique se 'placar_visivel' é True.
+    # No final do seu Bloco 3.2 (Desenho)
+
+    # --- Desenha o Placar (se estiver visível) ---
+    # No final do seu Bloco 3.2 (Desenho)
+
+    if placar_visivel:
+    
+        # --- DESENHO DO FUNDO DO PLACAR (COM TAMANHO RESPONSIVO) ---
+        
+        # 1. Define a largura e altura do placar como uma porcentagem da tela.
+        largura_placar = int(LARGURA_TELA * 0.5) # Ocupará 50% da largura da tela
+        altura_placar = int(ALTURA_TELA * 0.6)  # Ocupará 60% da altura da tela
+        
+        # 2. Cria o Rect para a área do placar usando esses valores calculados.
+        rect_placar = pygame.Rect(0, 0, largura_placar, altura_placar)
+        rect_placar.center = CENTRO_DA_TELA
+        
+        # O resto do seu código para desenhar o fundo e o texto continua igual...
+        fundo_placar = pygame.Surface(rect_placar.size)
+        # ... etc ...
+        fundo_placar.set_alpha(220) # Aumentei um pouco a opacidade
+        fundo_placar.fill((20, 20, 20))
+        
+        tela.blit(fundo_placar, rect_placar)
+        
+        # --- DESENHO DO TEXTO DO PLACAR (COM LAYOUT RESPONSIVO) ---
+        
+        fonte_placar = pygame.font.SysFont('Arial', 24, bold=True)
+        cor_texto = (255, 255, 255)
+        
+        # --- Definições de Layout Relativo do Placar ---
+        # As margens e posições agora são calculadas com base no tamanho do 'rect_placar'.
+        margem_vertical = int(rect_placar.height * 0.1) # 10% da altura do placar
+        
+        y_cabecalho = rect_placar.top + margem_vertical
+        
+        # As colunas são definidas como porcentagens da largura do placar.
+        x_col_jogador = rect_placar.left + int(rect_placar.width * 0.24) # 30% da largura
+        x_col_vidas = rect_placar.left + int(rect_placar.width * 0.41)     # 55% da largura
+        x_col_promessa = rect_placar.left + int(rect_placar.width * 0.58)  # 75% da largura
+        x_col_vazas = rect_placar.left + int(rect_placar.width * 0.80)      # 90% da largura
+        
+        # Renderiza e desenha os CABEÇALHOS usando as posições relativas.
+        cabecalhos = ["Jogador", "Vidas", "Prometeu", "Ganhou"]
+        posicoes_x = [x_col_jogador, x_col_vidas, x_col_promessa, x_col_vazas]
+        
+        for texto, pos_x in zip(cabecalhos, posicoes_x):
+            surface_header = fonte_placar.render(texto, True, cor_texto)
+            # Usamos .midtop como âncora para alinhar os cabeçalhos pelo topo.
+            rect_header = surface_header.get_rect(midtop=(pos_x, y_cabecalho))
+            tela.blit(surface_header, rect_header)
+            
+        altura_linha = int(rect_placar.height * 0.13) # 15% da altura do placar
+        y_linha_atual = y_cabecalho + int(margem_vertical * 0.4) # Um pequeno espaço extra
+
+        # Percorre a lista de jogadores para desenhar uma linha para cada um.
+        for jogador in nosso_jogo.jogadores:
+            # Aumenta a posição Y para a linha deste jogador.
+            y_linha_atual += altura_linha
+
+            # Prepara os textos que serão exibidos em cada coluna.
+            # Se a promessa ainda não foi feita (-1), mostramos um traço "-".
+            texto_nome = jogador.nome
+            texto_vidas = str(jogador.vidas)
+            texto_promessa = str(jogador.promessa_atual) if jogador.promessa_atual != -1 else "-"
+            texto_vazas = str(jogador.vazas_ganhas)
+            
+            # Agrupa os textos e suas posições para um desenho limpo.
+            dados_jogador = [texto_nome, texto_vidas, texto_promessa, texto_vazas]
+            # As posicoes_x já foram definidas na seção do cabeçalho.
+            
+            # Desenha cada dado na sua respectiva coluna.
+            for texto, pos_x in zip(dados_jogador, posicoes_x):
+                surface_dado = fonte_placar.render(texto, True, cor_texto)
+                # Usamos .midtop para alinhar todos os dados pela mesma linha de base.
+                rect_dado = surface_dado.get_rect(midtop=(pos_x, y_linha_atual))
+                tela.blit(surface_dado, rect_dado)
     pygame.display.flip()
 
 # --- 4: Finalização ---
