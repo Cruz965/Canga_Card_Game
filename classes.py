@@ -3,7 +3,7 @@
 
 import pygame
 import random
-
+from collections import deque
 class Carta:
     """ Representa uma única carta do baralho, com seu valor, naipe, imagem e poder de jogo. """
     def __init__(self, valor, naipe):
@@ -70,6 +70,7 @@ class Jogador:
         self.vidas = 5
         self.promessa_atual = -1
         self.cartas_prometidas = []
+        self.vazas_ganhas = 0
     def __repr__(self):
         return f"Jogador {self.nome} com {len(self.mao)} cartas"
 
@@ -86,6 +87,7 @@ class Jogo:
         self.turno_atual = 0
         # Cria a lista de jogadores.
         self.jogadores = []
+        self.log_de_jogo = deque(maxlen=50)
         # Adiciona o jogador humano.
         self.jogadores.append(Jogador("Jogador 1", eh_humano=True))
         # Adiciona os jogadores controlados pela IA.
@@ -93,11 +95,11 @@ class Jogo:
             self.jogadores.append(Jogador(f"IA_{i+1}"))
         self.fase_do_jogo = "PROMETENDO"     
         self.vaza_atual = [] # Lista para guardar as cartas jogadas na rodada.
-        
+        self.rodada_atual_num_cartas = 1
         # --- LÓGICA MOVIDA DA MAIN ---
         # A distribuição de cartas agora é responsabilidade do Jogo.
         for jogador in self.jogadores:
-            self.baralho.distribuir(jogador, 5)
+            self.baralho.distribuir(jogador, self.rodada_atual_num_cartas)
     
     def avancar_turno(self):
         """Avança o turno para o próximo jogador de forma circular."""
@@ -116,40 +118,54 @@ class Jogo:
             # b. Se as duas condições forem verdadeiras, a fase de promessas acabou!
             #    Mude o valor de 'self.fase_do_jogo' para "JOGANDO".
             self.fase_do_jogo = "JOGANDO"
-            print("\n--- FASE DE JOGO INICIADA ---", flush=True)
-            # c. Adicione um print() com flush=True para nos dar um feedback no terminal
+            self.log_de_jogo.append("\n--- FASE DE JOGO INICIADA ---")
+            # c. Adicione um self.log_de_jogo.append() com flush=True para nos dar um feedback no terminal
             #    de que a fase mudou com sucesso.
             #    Ex: 
     # Dentro da class Jogo:
-    def jogador_tenta_jogar_carta(self, indice_jogador, carta_obj):
-        # --- NOVA VERIFICAÇÃO NO INÍCIO ---
-        # a. Verifique se o 'indice_jogador' que está tentando jogar
-        #    é diferente do 'self.turno_atual'.
-       
-        if indice_jogador != self.turno_atual:
-            print("Erro! Vez de um jogador diferente", flush=True)
-            return False
-            # Se for diferente, não é a vez dele!
-            # Imprima uma mensagem de erro para debug.
-            # E retorne False para indicar que a jogada falhou.
-            
-        jogador = self.jogadores[indice_jogador]
-    
-    # A verificação de segurança agora é se a carta realmente existe na mão.
-        if carta_obj in jogador.mao:
-        # Usamos .remove() para tirar o objeto específico da lista.
-            
-            jogador.mao.remove(carta_obj)
-            self.vaza_atual.append((carta_obj, indice_jogador, random.uniform(-15, 15)))
-            print(f"{jogador.nome} jogou: {carta_obj}", flush=True)
-            self.avancar_turno()
+    # Em classes.py, na class Jogo:
 
-            return True
+    def jogador_tenta_jogar_carta(self, indice_jogador, carta_obj):
+        """
+        Processa a tentativa de um jogador de jogar uma carta.
+        Valida o turno e a posse da carta antes de alterar o estado do jogo.
+        Retorna True se a jogada for bem-sucedida, False caso contrário.
+        """
+        # --- Verificações de Validade (Guard Clauses) ---
         
-        return False
+        # 1. Verifica se é o turno do jogador correto.
+        if self.fase_do_jogo != "JOGANDO":
+            self.log_de_jogo.append(f"Não se pode jogar cartas na fase de {self.fase_do_jogo}")
+            return False
+        
+        if indice_jogador != self.turno_atual:
+            self.log_de_jogo.append(f"Não é a vez de {self.jogadores[indice_jogador].nome}")
+            return False
+        
+        jogador = self.jogadores[indice_jogador]
+        
+        # 2. Verifica se a carta está de fato na mão do jogador.
+        if carta_obj not in jogador.mao:
+            # Esta verificação é importante para a lógica de arrastar e soltar.
+            self.log_de_jogo.append(f"Erro: {jogador.nome} tentou jogar {carta_obj} mas não a possui.")
+            return False
             
-        print(f"{jogador.nome} jogou: {carta_jogada}", flush=True)
-        return False # A jogada falhou
+        # --- Lógica da Jogada Bem-Sucedida ---
+        # Se passamos pelas verificações, a jogada é válida.
+        
+        # Remove a carta da mão e a adiciona à vaza com um ângulo aleatório.
+        jogador.mao.remove(carta_obj)
+        angulo_aleatorio = random.uniform(-15, 15)
+        self.vaza_atual.append((carta_obj, indice_jogador, angulo_aleatorio))
+        
+        # Anuncia a jogada, escondendo a informação se for a rodada "na testa".
+        
+        self.log_de_jogo.append(f"{jogador.nome} jogou: {carta_obj}")
+        
+        # Avança o turno para o próximo jogador.
+        self.avancar_turno()
+        
+        return True
     # Dentro da sua class Jogo, em classes.py
 
     # Encontre o método que criamos (ou crie-o agora)
@@ -170,7 +186,7 @@ class Jogo:
         # Caso especial: se a IA não tem cartas, a promessa é 0.
         if num_cartas_na_mao == 0:
             ia_jogador.promessa_atual = 0
-            print(f"{ia_jogador.nome} prometeu fazer 0 vazas.", flush=True)
+            self.log_de_jogo.append(f"{ia_jogador.nome} prometeu fazer 0 cartas.")
             self.avancar_turno()
             return
 
@@ -202,7 +218,119 @@ class Jogo:
         ia_jogador.promessa_atual = promessa_ia
         
         # Anuncia a promessa da IA.
-        print(f"{ia_jogador.nome} prometeu fazer {ia_jogador.promessa_atual} vazas.", flush=True)
+        self.log_de_jogo.append(f"{ia_jogador.nome} prometeu fazer {ia_jogador.promessa_atual} cartas.")
 
         # Avança o turno para o próximo jogador (ou para a próxima fase).
         self.avancar_turno()
+    def processar_jogada_ia(self):
+        """
+        Processa a lógica para um jogador IA jogar uma carta aleatória da mão.
+        """
+        jogador_do_turno = self.jogadores[self.turno_atual]
+        
+        # --- Guard Clause (Verificação de Segurança) ---
+        # Se não for a fase de jogo OU se o jogador do turno for humano, o método para aqui.
+        if self.fase_do_jogo != "JOGANDO" or jogador_do_turno.eh_humano:
+            return
+            
+        # Se passamos pela verificação, sabemos que é a vez de uma IA jogar.
+        if jogador_do_turno.mao:
+            # Escolhe uma carta aleatória da mão.
+            carta_escolhida = random.choice(jogador_do_turno.mao)
+            
+            # Manda o motor do jogo processar a jogada, passando o ÍNDICE e o OBJETO da carta.
+            self.jogador_tenta_jogar_carta(self.turno_atual, carta_escolhida)
+   # Em classes.py, na class Jogo
+
+    def processar_fim_da_vaza(self):
+        """
+        Analisa a vaza atual, determina o vencedor, atualiza o estado do jogo
+        e prepara para a próxima vaza ou para a próxima rodada.
+        """
+        # Verificação de segurança: só roda se a vaza estiver cheia.
+        if len(self.vaza_atual) != len(self.jogadores):
+            return
+
+        # --- Lógica do Cangar ---
+        # 1. Conta a ocorrência de cada valor de carta (que não seja manilha).
+        contagem_valores = {}
+        for carta, _, _ in self.vaza_atual: # Desempacotamento elegante da tupla
+            if carta.poder_de_jogo <= 10:
+                valor = carta.valor
+                contagem_valores[valor] = contagem_valores.get(valor, 0) + 1
+        
+        # 2. Cria uma lista dos valores que foram "cangados" (contagem > 1).
+        valores_cangados = []
+        for valor, contagem in contagem_valores.items():
+            if contagem > 1:
+                valores_cangados.append(valor)
+                
+        # 3. Cria uma lista final de jogadas válidas para vencer.
+        jogadas_validas = []
+        for jogada in self.vaza_atual:
+            carta = jogada[0]
+            # A jogada é válida se a carta for uma manilha OU se seu valor não foi cangado.
+            if carta.poder_de_jogo > 10 or carta.valor not in valores_cangados:
+                jogadas_validas.append(jogada)
+
+        # --- Encontrando o Vencedor ---
+        vencedor_encontrado = False
+        if jogadas_validas:
+            # Encontra a jogada com a carta de maior poder entre as válidas.
+            jogada_vencedora = max(jogadas_validas, key=lambda jogada: jogada[0].poder_de_jogo)
+            
+            # Pega o índice do jogador vencedor a partir da jogada vencedora.
+            indice_vencedor = jogada_vencedora[1]
+            
+            # Incrementa o contador de vazas ganhas do vencedor.
+            self.jogadores[indice_vencedor].vazas_ganhas += 1
+            
+            # O vencedor da vaza começa a próxima.
+            self.turno_atual = indice_vencedor
+            vencedor_encontrado = True
+            
+        # Se todas as cartas se anularam, o primeiro a jogar a vaza começa a próxima.
+        if not vencedor_encontrado:
+            indice_primeiro_a_jogar = self.vaza_atual[0][1]
+            self.turno_atual = indice_primeiro_a_jogar
+
+        # --- Limpeza e Fim de Rodada ---
+        self.log_de_jogo.append(f"Vencedor da vaza: {self.jogadores[self.turno_atual].nome}")
+        self.vaza_atual.clear()
+        
+        # Verifica se a rodada acabou (se as mãos estão vazias).
+        if not self.jogadores[0].mao:
+            self.log_de_jogo.append("--- FIM DA RODADA ---")
+            # (Aqui entrará a lógica de pontuação antes de preparar a próxima rodada)
+            self.preparar_proxima_rodada()
+
+    def preparar_proxima_rodada(self):
+        """
+        Prepara o jogo para a próxima rodada: limpa o estado anterior,
+        ajusta o número de cartas e distribui novamente.
+        """
+        # a. Avança o contador de cartas.
+        self.rodada_atual_num_cartas += 1
+        
+        # b. Implementa o ciclo: se passar de 5, volta para 1.
+        if self.rodada_atual_num_cartas > 5:
+            self.rodada_atual_num_cartas = 1
+            
+        # c. Cria um baralho novo e já o embaralha.
+        self.baralho = Baralho()
+        self.baralho.embaralhar()
+        
+        # d. Limpa a vaza da rodada anterior.
+        self.vaza_atual.clear()
+        
+        # e. Percorre cada jogador para limpar sua mão, resetar sua promessa
+        #    e distribuir as novas cartas.
+        for jogador in self.jogadores:
+            jogador.mao.clear()
+            jogador.promessa_atual = -1
+            # Distribui o novo número de cartas.
+            self.baralho.distribuir(jogador, self.rodada_atual_num_cartas)
+        
+        # f. Reseta o estado do jogo para o início de uma nova fase de promessas.
+        self.fase_do_jogo = "PROMETENDO"
+        self.turno_atual = 0 # O turno sempre volta para o jogador 0 no início da rodada.
